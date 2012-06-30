@@ -190,6 +190,37 @@ class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
         self.assertEqual(doc['age'], 25)
 
 
+class FilterCollectionsWithSavedQueries(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = pymongo.Connection(TEST_DB, safe=True)
+        self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
+
+    def test_should_return_only_matching_documents_when_control_file_present(self):
+
+        # Given query file in collection subfolder
+        query = '{"age": {"$lte": 25}}'
+        self.fuse.write("/test_db/test_coll/query.json",
+                        query,
+                        offset=0,
+                        fh=None)
+
+        # And mongodb documents
+        coll = self.conn.test_db.test_coll
+        coll.drop()
+        oid_1 = coll.save({"name": "Svetlana", "age": 25})
+        oid_2 = coll.save({"name": "Juliana", "age": 0})
+        oid_3 = coll.save({"name": "Aleksey", "age": 27})
+
+        # When listing files in dir
+        readdir = self.fuse.readdir("/test_db/test_coll", fh=None)
+
+        # Then only matching docs should be listed
+        self.assertIn("{}.json".format(oid_1), readdir)
+        self.assertIn("{}.json".format(oid_2), readdir)
+        self.assertNotIn("{}.json".format(oid_3), readdir)
+
+
 class SplitPathTest(unittest.TestCase):
 
     def test_should_split_path_into_list_of_components(self):

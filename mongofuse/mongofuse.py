@@ -23,6 +23,7 @@ class MongoFuse(Operations):
 
     def __init__(self, conn_string):
         self.conn = pymongo.Connection(conn_string)
+        self._queries = {}
 
     def readdir(self, path, fh):
 
@@ -39,8 +40,7 @@ class MongoFuse(Operations):
 
         # Third level entries are mongo documents
         elif len(components) == 3:
-            _, db, coll = components
-            return [".", ".."] + self._list_documents(db, coll)
+            return [".", ".."] + self._list_documents(path)
 
         else:
             raise FuseOSError(errno.ENOENT)
@@ -69,6 +69,8 @@ class MongoFuse(Operations):
             st['st_mode'] = stat.S_IFREG
             st['st_size'] = len(dumps(self._find_doc(path)))
 
+        # TODO: Write access for query.json file
+
         # Throw error for unknown entries
         else:
             raise FuseOSError(errno.ENOENT)
@@ -86,16 +88,28 @@ class MongoFuse(Operations):
 
             return dumps(doc)
 
+    def write(self, path, data, offset, fh):
 
-    def _list_documents(self, db, coll):
+        dirs, fname = os.path.split(path)
+        if fname == "query.json":
+            self._queries[dirs] = data
+            return
+
+    def _list_documents(self, path):
         """Returns list of MongoDB documents represented as files.
         """
         
-        if "." in db:
+        # FIXME: Need only check for special ./.. folders in path
+        if "." in path:
             return []
 
+        components = split_path(path)
+        db = components[1]
+        coll = components[2]
+        query = loads(self._queries.get(path, "{}"))
+
         docs = []
-        for doc in self.conn[db][coll].find().limit(10):
+        for doc in self.conn[db][coll].find(query).limit(10):
             docs.append("{}.json".format(doc["_id"]))
 
         return docs
@@ -132,6 +146,11 @@ def dumps(doc):
                       indent=4,
                       sort_keys=True,
                       default=bson.json_util.default)
+
+def loads(string):
+    """Returns document parsed from `string`. """
+
+    return json.loads(string, object_hook=bson.json_util.object_hook)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
