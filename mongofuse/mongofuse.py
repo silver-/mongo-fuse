@@ -61,6 +61,10 @@ class MongoFuse(Operations):
         elif len(components) == 2 or len(components) == 3:
             st['st_mode'] = stat.S_IFDIR
 
+        # Second level entries are documents
+        elif len(components) == 4:
+            st['st_mode'] = stat.S_IFREG
+
         # Throw error for unknown entries
         else:
             raise FuseOSError(errno.ENOENT)
@@ -70,6 +74,9 @@ class MongoFuse(Operations):
     def _list_documents(self, db, coll):
         """Returns list of MongoDB documents represented as files.
         """
+        
+        if "." in db:
+            return []
 
         docs = []
         for doc in self.conn[db][coll].find().limit(10):
