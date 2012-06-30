@@ -8,7 +8,7 @@ TEST_DB = "localhost:27017"
 class MongoFuseTest(unittest.TestCase):
 
     def setUp(self):
-        self.conn = pymongo.Connection(TEST_DB)
+        self.conn = pymongo.Connection(TEST_DB, safe=True)
         self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
 
     def test_should_represent_databases_as_folders(self):
