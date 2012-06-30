@@ -2,6 +2,7 @@
 import unittest
 import stat
 import textwrap
+import datetime
 
 # Third-party modules:
 import pymongo
@@ -105,7 +106,6 @@ class RepresentCollectionsAsSubfoldersTest(unittest.TestCase):
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
-@unittest.skip("")
 class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
 
     def setUp(self):
@@ -147,8 +147,6 @@ class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
         self.assertTrue(stat.S_ISREG(attrs['st_mode']))
         self.assertFalse(stat.S_ISDIR(attrs['st_mode']))
 
-        # TODO: And correct file size should be returned
-
     def test_read(self):
 
         # Given MongoDB document
@@ -164,12 +162,14 @@ class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
         content = self.fuse.read(filename, 1000, 0, fh=None)
 
         # Then pretty-printed JSON should be returned
-        self.assertEqual(content, textwrap.dedent("""\
+        self.assertMultiLineEqual(content, textwrap.dedent("""\
                 {
-                    "age": 27
+                    "_id": {
+                        "$oid": "%s"
+                    }, 
+                    "age": 27, 
                     "name": "Aleksey"
-                }
-        """))
+                }""" % oid_1))
 
     def test_find_doc(self):
 
@@ -235,21 +235,34 @@ class DumpsTest(unittest.TestCase):
         # dumps() should return pretty-printed version of the document
         expected = textwrap.dedent("""\
             {
+                "age": 26, 
+                "name": "Svetlana", 
                 "skills": [
                     {
-                        "skill": "C++", 
-                        "level": 7
+                        "level": 7, 
+                        "skill": "C++"
                     }, 
                     {
-                        "skill": "Python", 
-                        "level": 7
+                        "level": 7, 
+                        "skill": "Python"
                     }
-                ], 
-                "age": 26, 
-                "name": "Svetlana"
+                ]
             }""")
         self.maxDiff = None
         self.assertMultiLineEqual(mongofuse.dumps(doc), expected)
+
+    @unittest.skip("implement human readable datetimes")
+    def test_should_encode_datetime_objects(self):
+
+        doc = {"dt": datetime.datetime(2012, 6, 30, 22, 00)}
+        expected = textwrap.dedent("""\
+                {
+                    "dt": ISODate("2012-06-30T22:00:00Z")
+                }""")
+        self.assertMultiLineEqual(mongofuse.dumps(doc), expected)
+
+
+
 
 
 if __name__ == '__main__':

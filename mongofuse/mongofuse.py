@@ -10,6 +10,7 @@ import json
 # Third-party modules:
 import pymongo
 import bson
+import bson.json_util
 from fuse import FUSE, Operations, FuseOSError
 
 class MongoFuse(Operations):
@@ -66,7 +67,7 @@ class MongoFuse(Operations):
         # Thrid level entries are documents
         elif len(components) == 4:
             st['st_mode'] = stat.S_IFREG
-            st['st_size'] = 4096
+            st['st_size'] = len(dumps(self._find_doc(path)))
 
         # Throw error for unknown entries
         else:
@@ -83,7 +84,6 @@ class MongoFuse(Operations):
             if doc is None:
                 return "{}"
 
-            del doc['_id']
             return dumps(doc)
 
 
@@ -128,12 +128,10 @@ def split_path(path):
 def dumps(doc):
     """Returns pretty-printed `doc`. """
 
-    return json.dumps(doc, indent=4)
-
-
-
-
-
+    return json.dumps(doc,
+                      indent=4,
+                      sort_keys=True,
+                      default=bson.json_util.default)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
