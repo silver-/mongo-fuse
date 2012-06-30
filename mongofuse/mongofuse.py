@@ -33,6 +33,10 @@ class MongoFuse(Operations):
         elif len(components) == 2:
             db = components[1]
             return [".", ".."] + self.conn[db].collection_names()
+
+        else:
+            raise FuseOSError(errno.ENOENT)
+
             
 
     def getattr(self, path, fh=None):
@@ -50,8 +54,8 @@ class MongoFuse(Operations):
         if len(components) == 1 and path == "/":
             st['st_mode'] = stat.S_IFDIR
 
-        # First level entries are database names
-        elif len(components) == 2:
+        # First level entries are database names or collections names
+        elif len(components) == 2 or len(components) == 3:
             st['st_mode'] = stat.S_IFDIR
 
         # Throw error for unknown entries

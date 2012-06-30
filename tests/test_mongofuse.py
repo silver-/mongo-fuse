@@ -47,6 +47,7 @@ class RepresentDatabasesAsFoldersTest(unittest.TestCase):
         # Given a MongoDB database
         db = self.conn['test_1']
         db.test.insert({'db': "test_1"})
+        self.addCleanup(self.conn.drop_database, 'test_1')
 
         # When getting attributes for the database folder entry
         attrs = self.fuse.getattr('/test_1')
@@ -88,6 +89,20 @@ class RepresentCollectionsAsSubfoldersTest(unittest.TestCase):
         # And special "." and ".." folders should be listed as well
         self.assertIn(".", readdir)
         self.assertIn("..", readdir)
+
+    def test_getattr(self):
+
+        # Given a MongoDB database
+        db_1 = self.conn['test_db_1']
+        db_1['collection.1.1'].insert({"foo": "bar"})
+        self.addCleanup(self.conn.drop_database, 'test_db_1')
+
+        # When getting attributes for the database folder entry
+        attrs = self.fuse.getattr('/test_db_1/collection.1.1')
+
+        # Then folder flag should be set
+        self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
+
 
 
 class SplitPathTest(unittest.TestCase):
