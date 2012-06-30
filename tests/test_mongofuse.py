@@ -55,6 +55,20 @@ class RepresentDatabasesAsFoldersTest(unittest.TestCase):
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
+class RepresentCollectionsAsSubfolders(unittest.TestCase):
+
+    def test_readdir():
+
+        # Given MongoDB collections
+        db_1 = self.conn['test_1']
+        db_1['collection.1.1'].insert({"foo": "bar"})
+        db_1['collection.1.2'].insert({"foo": "bar"})
+
+        db_2 = self.conn['test_2']
+        db_2['collection.2.1'].insert({"foo": "bar"})
+        db_2['collection.2.2'].insert({"foo": "bar"})
+
+
 class SplitPathTest(unittest.TestCase):
 
     def test_should_split_path_into_list_of_components(self):
