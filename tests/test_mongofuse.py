@@ -55,18 +55,39 @@ class RepresentDatabasesAsFoldersTest(unittest.TestCase):
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
-class RepresentCollectionsAsSubfolders(unittest.TestCase):
+class RepresentCollectionsAsSubfoldersTest(unittest.TestCase):
 
-    def test_readdir():
+    def setUp(self):
+        self.conn = pymongo.Connection(TEST_DB, safe=True)
+        self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
+
+    def test_readdir(self):
 
         # Given MongoDB collections
-        db_1 = self.conn['test_1']
+        db_1 = self.conn['test_db_1']
         db_1['collection.1.1'].insert({"foo": "bar"})
         db_1['collection.1.2'].insert({"foo": "bar"})
 
-        db_2 = self.conn['test_2']
+        db_2 = self.conn['test_db_2']
         db_2['collection.2.1'].insert({"foo": "bar"})
         db_2['collection.2.2'].insert({"foo": "bar"})
+
+        self.addCleanup(self.conn.drop_database, "db_1")
+        self.addCleanup(self.conn.drop_database, "db_2")
+
+        # When listing files in database dir 
+
+        readdir = self.fuse.readdir("/test_db_1",fh=None)
+        self.assertIn("collection.1.1", readdir)
+        self.assertIn("collection.1.2", readdir)
+
+        readdir = self.fuse.readdir("/test_db_2", fh=None)
+        self.assertIn("collection.2.1", readdir)
+        self.assertIn("collection.2.2", readdir)
+
+        # And special "." and ".." folders should be listed as well
+        self.assertIn(".", readdir)
+        self.assertIn("..", readdir)
 
 
 class SplitPathTest(unittest.TestCase):

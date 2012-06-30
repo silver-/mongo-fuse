@@ -22,7 +22,18 @@ class MongoFuse(Operations):
         self.conn = pymongo.Connection(conn_string)
 
     def readdir(self, path, fh):
-        return [".", ".."] + self.conn.database_names()
+
+        components = split_path(path)
+
+        # Root entry is a directory
+        if len(components) == 1 and path == "/":
+            return [".", ".."] + self.conn.database_names()
+
+        # First level entries are database names
+        elif len(components) == 2:
+            db = components[1]
+            return [".", ".."] + self.conn[db].collection_names()
+            
 
     def getattr(self, path, fh=None):
 
