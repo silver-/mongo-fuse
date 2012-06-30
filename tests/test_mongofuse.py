@@ -90,6 +90,48 @@ class RepresentCollectionsAsSubfoldersTest(unittest.TestCase):
         self.assertIn("..", readdir)
 
 
+class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
+
+    def setUp(self):
+        self.conn = pymongo.Connection(TEST_DB, safe=True)
+        self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
+
+    def test_readdir(self):
+
+        # Given documents in MongoDB collection
+        coll = self.conn.test_db.test_collection
+        self.addCleanup(self.conn.drop_database, "test_db")
+        coll.drop()
+
+        oid_1 = coll.save({"name": "Aleksey", "age": 27})
+        oid_2 = coll.save({"name": "Svetlana", "age": 25})
+
+        # When reading contents of the collection dir
+        readdir = self.fuse.readdir("/test_db/test_collection", fh=None)
+
+        # Then document's ObjectIDs should be returned as filenames
+        self.assertIn("{}.json".format(oid_1), readdir)
+        self.assertIn("{}.json".format(oid_2), readdir)
+
+    def test_getattr(self):
+
+        # Given documents in MongoDB collection
+        coll = self.conn.test_db.test_collection
+        self.addCleanup(self.conn.drop_database, "test_db")
+        coll.drop()
+
+        oid_1 = coll.save({"name": "Aleksey", "age": 27})
+        oid_2 = coll.save({"name": "Svetlana", "age": 25})
+
+        # When getting attributes for file representing documents
+        filename = '/test_db/test_collection/{}.json'.format(oid_1)
+        attrs = self.fuse.getattr(filename)
+
+        # Then "regular file" flag should be set
+        self.assertTrue(stat.S_ISREG(attrs['st_mode']))
+        self.assertFalse(stat.S_ISDIR(attrs['st_mode']))
+
+
 class SplitPathTest(unittest.TestCase):
 
     def test_should_split_path_into_list_of_components(self):

@@ -33,7 +33,11 @@ class MongoFuse(Operations):
         elif len(components) == 2:
             db = components[1]
             return [".", ".."] + self.conn[db].collection_names()
-            
+
+        # Third level entries are mongo documents
+        elif len(components) == 3:
+            _, db, coll = components
+            return [".", ".."] + self._list_documents(db, coll)
 
     def getattr(self, path, fh=None):
 
@@ -60,6 +64,15 @@ class MongoFuse(Operations):
 
         return st
 
+    def _list_documents(self, db, coll):
+        """Returns list of MongoDB documents represented as files.
+        """
+
+        docs = []
+        for doc in self.conn[db][coll].find().limit(10):
+            docs.append("{}.json".format(doc["_id"]))
+
+        return docs
 
 def split_path(path):
     """Split `path` into list of components.
