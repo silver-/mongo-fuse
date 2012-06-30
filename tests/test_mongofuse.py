@@ -12,11 +12,14 @@ import fuse
 TEST_DB = "localhost:27017"
 
 
-class RepresentDatabasesAsFoldersTest(unittest.TestCase):
+class FuseTest(unittest.TestCase):
 
     def setUp(self):
         self.conn = pymongo.Connection(TEST_DB, safe=True)
         self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
+
+
+class RepresentDatabasesAsFoldersTest(FuseTest):
 
     def test_readdir(self):
 
@@ -59,11 +62,7 @@ class RepresentDatabasesAsFoldersTest(unittest.TestCase):
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
-class RepresentCollectionsAsSubfoldersTest(unittest.TestCase):
-
-    def setUp(self):
-        self.conn = pymongo.Connection(TEST_DB, safe=True)
-        self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
+class RepresentCollectionsAsSubfoldersTest(FuseTest):
 
     def test_readdir(self):
 
@@ -107,11 +106,7 @@ class RepresentCollectionsAsSubfoldersTest(unittest.TestCase):
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
-class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
-
-    def setUp(self):
-        self.conn = pymongo.Connection(TEST_DB, safe=True)
-        self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
+class ShowFirstDocumentsAsJsonFilesTest(FuseTest):
 
     def test_readdir(self):
 
@@ -201,11 +196,7 @@ class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
         self.assertEqual(doc['age'], 25)
 
 
-class FilterCollectionsWithSavedQueries(unittest.TestCase):
-
-    def setUp(self):
-        self.conn = pymongo.Connection(TEST_DB, safe=True)
-        self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
+class FilterCollectionsWithSavedQueries(FuseTest):
 
     def test_should_return_only_matching_documents_when_query_file_present(self):
 
@@ -251,6 +242,8 @@ class FilterCollectionsWithSavedQueries(unittest.TestCase):
         # And length should be reported by getattr
         self.assertEqual(self.fuse.getattr(filename)['st_size'], len(query))
 
+
+#class EditExistingDocsTest(FuseTest):
 
 class SplitPathTest(unittest.TestCase):
 

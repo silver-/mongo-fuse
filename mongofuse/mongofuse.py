@@ -140,7 +140,9 @@ class MongoFuse(Operations):
 
         print "write", path, data
 
+        components = split_path(path)
         dirs, fname = os.path.split(path)
+
         if fname == "query.json":
             self._queries[dirs] = data
             return len(data)
