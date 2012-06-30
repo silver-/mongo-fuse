@@ -7,6 +7,7 @@ import datetime
 # Third-party modules:
 import pymongo
 import mongofuse
+import fuse
 
 TEST_DB = "localhost:27017"
 
@@ -171,6 +172,13 @@ class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
                     "name": "Aleksey"
                 }""" % oid_1))
 
+    def test_raise_error_on_unexisting_files(self):
+
+        # Error should be raised when attempting to read a file that doesn't
+        # represent existing doc and has no special meaning,
+        with self.assertRaises(fuse.FuseOSError):
+            self.fuse.read("/test_db/test_coll/some_file.txt", size=1000)
+
     def test_find_doc(self):
 
         # Given MongoDB document
@@ -196,7 +204,7 @@ class FilterCollectionsWithSavedQueries(unittest.TestCase):
         self.conn = pymongo.Connection(TEST_DB, safe=True)
         self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
 
-    def test_should_return_only_matching_documents_when_control_file_present(self):
+    def test_should_return_only_matching_documents_when_query_file_present(self):
 
         # Given query file in collection subfolder
         query = '{"age": {"$lte": 25}}'
@@ -219,6 +227,26 @@ class FilterCollectionsWithSavedQueries(unittest.TestCase):
         self.assertIn("{}.json".format(oid_1), readdir)
         self.assertIn("{}.json".format(oid_2), readdir)
         self.assertNotIn("{}.json".format(oid_3), readdir)
+
+    def test_should_read_saved_query_files(self):
+
+        # When saving query.json file
+        query = '{"foo": "bar"}'
+        filename = "/test_db/test_coll/query.json"
+        self.fuse.write(filename,
+                        query,
+                        offset=0,
+                        fh=None)
+
+        # Then it should be listed by readdir
+        self.assertIn("query.json", self.fuse.readdir("/test_db/test_coll"))
+
+        # And its content should be returned by read
+        content = self.fuse.read(filename, 1000)
+        self.assertEqual(query, content)
+
+        # And length should be reported by getattr
+        self.assertEqual(self.fuse.getattr(filename)['st_size'], len(query))
 
 
 class SplitPathTest(unittest.TestCase):

@@ -24,10 +24,14 @@ class MongoFuse(Operations):
     def __init__(self, conn_string):
         self.conn = pymongo.Connection(conn_string)
         self._queries = {}
+        self.fd = 0
 
-    def readdir(self, path, fh):
+    def readdir(self, path, fh=None):
+
+        print "readdir", path
 
         components = split_path(path)
+        dirs, fname = os.path.split(path)
 
         # Root entry is a directory
         if len(components) == 1 and path == "/":
@@ -40,36 +44,47 @@ class MongoFuse(Operations):
 
         # Third level entries are mongo documents
         elif len(components) == 3:
-            return [".", ".."] + self._list_documents(path)
+            files = [".", ".."] + self._list_documents(path)
+            if path in self._queries:
+                files += ['query.json']
+            return files
 
         else:
             raise FuseOSError(errno.ENOENT)
 
     def getattr(self, path, fh=None):
 
+        print "getattr", path
+
         st = dict(st_atime=0,
                   st_mtime=0,
                   st_size=0,
                   st_gid=os.getgid(),
                   st_uid=os.getuid(),
-                  st_mode=stat.S_IFDIR)
+                  st_mode=0755)
 
         components = split_path(path)
+        dirs, fname = os.path.split(path)
 
         # Root entry is a directory
         if len(components) == 1 and path == "/":
-            st['st_mode'] = stat.S_IFDIR
+            st['st_mode'] |= stat.S_IFDIR
 
         # First level entries are database names or collections names
         elif len(components) == 2 or len(components) == 3:
-            st['st_mode'] = stat.S_IFDIR
+            st['st_mode'] |= stat.S_IFDIR
+
+        elif fname == "query.json":
+            if dirs not in self._queries:
+                raise FuseOSError(errno.ENOENT)
+            st['st_mode'] |= stat.S_IFREG
+            st['st_size'] = len(self._queries[dirs])
 
         # Thrid level entries are documents
         elif len(components) == 4:
-            st['st_mode'] = stat.S_IFREG
+            st['st_mode'] |= stat.S_IFREG
             st['st_size'] = len(dumps(self._find_doc(path)))
 
-        # TODO: Write access for query.json file
 
         # Throw error for unknown entries
         else:
@@ -77,23 +92,62 @@ class MongoFuse(Operations):
 
         return st
     
-    def read(self, path, size, offset, fh):
+    def getxattr(self, path, name, position=0):
+        print "getxattr", path
+        return ''
+
+    def read(self, path, size, offset=0, fh=None):
+
+        print "read", path
 
         components = split_path(path)
+        dirs, fname = os.path.split(path)
+
+        if fname == "query.json" and dirs in self._queries:
+            print "READ QUERY"
+            return self._queries[dirs]
 
         if len(components) == 4:
             doc = self._find_doc(path)
             if doc is None:
-                return "{}"
+                raise FuseOSError(errno.ENOENT)
+            else:
+                return dumps(doc)
 
-            return dumps(doc)
+    def create(self, path, mode):
+
+        print "Create", path
+        dirs, fname = os.path.split(path)
+        self._queries[dirs] = "{}"
+        self.fd += 1
+        return self.fd
+
+    def open(self, path, flags):
+        self.fd += 1
+        return self.fd
+
+    def truncate(self, path, length, fh=None):
+
+        dirs, fname = os.path.split(path)
+        
+        if fname == 'query.json' and dirs in self._queries:
+            self._queries[dirs] = self._queries[dirs][:length]
 
     def write(self, path, data, offset, fh):
+
+        print "write", path, data
 
         dirs, fname = os.path.split(path)
         if fname == "query.json":
             self._queries[dirs] = data
-            return
+            return len(data)
+        
+        else:
+            return 0
+
+    def statfs(self, path):
+        # TODO: Report real data
+        return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
 
     def _list_documents(self, path):
         """Returns list of MongoDB documents represented as files.
@@ -125,7 +179,11 @@ class MongoFuse(Operations):
         coll = components[2]
         oid = components[-1].split(".")[0]
 
-        return self.conn[db][coll].find_one(bson.objectid.ObjectId(oid))
+        try:
+            return self.conn[db][coll].find_one(bson.objectid.ObjectId(oid))
+
+        except bson.errors.InvalidId:
+            return None
 
 
 def split_path(path):
