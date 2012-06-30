@@ -4,10 +4,11 @@ import sys
 import stat
 import posix
 import errno
+import argparse
 
 # Third-party modules:
 import pymongo
-from fuse import FUSE, Operations
+from fuse import FUSE, Operations, FuseOSError
 
 class MongoFuse(Operations):
     """File system interface for MongoDB.
@@ -44,8 +45,7 @@ class MongoFuse(Operations):
 
         # Throw error for unknown entries
         else:
-            return -errno.ENOSYS
-
+            raise FuseOSError(errno.ENOENT)
 
         return st
 
@@ -62,11 +62,21 @@ def split_path(path):
         return [head]
 
 def main():
-    if len(sys.argv) != 2:
-        print "Usage: %s <mount-point>" % sys.argv[0]
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("mount_point")
+    parser.add_argument("-f", "--foreground",
+                        help="Run foreground",
+                        action="store_true",
+                        default=True)           # TODO: Change to False
+    parser.add_argument("--db",
+                        help="MongoDB connection string. Default is %(default)s",
+                        default="localhost:27017",
+                        metavar="HOST:PORT")
+    args = parser.parse_args()
 
-    fuse = FUSE(MongoFuse("localhost:27017"), sys.argv[1], foreground=True)
+    fuse = FUSE(MongoFuse(args.db),
+                args.mount_point,
+                foreground=args.foreground)
 
 if __name__ == '__main__':
     main()
