@@ -6,6 +6,7 @@ import datetime
 
 # Third-party modules:
 import pymongo
+import bson
 import mongofuse
 import fuse
 
@@ -243,7 +244,27 @@ class FilterCollectionsWithSavedQueries(FuseTest):
         self.assertEqual(self.fuse.getattr(filename)['st_size'], len(query))
 
 
-#class EditExistingDocsTest(FuseTest):
+class EditExistingDocsTest(FuseTest):
+
+    def test_should_update_existing_documents_on_file_write(self):
+
+        # Given MongoDB document
+        coll = self.conn.test_db.test_coll
+        oid = coll.save({"foo": "bar"})
+
+        # When writing to the file which represents this document
+        filename = "/test_db/test_coll/{}.json".format(oid)
+        new_doc = '''{"_id": {"$oid": "%s"},
+                      "foo": "bar2",
+                      "new": "key"}
+                  ''' % oid
+        self.fuse.write(filename, new_doc, 0)
+
+        # Then document in MongoDB should be updated
+        doc = coll.find_one(bson.objectid.ObjectId(oid))
+        self.assertEqual(doc['foo'], 'bar2')
+        self.assertEqual(doc['new'], 'key')
+
 
 class SplitPathTest(unittest.TestCase):
 

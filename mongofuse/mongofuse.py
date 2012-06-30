@@ -136,7 +136,7 @@ class MongoFuse(Operations):
         if fname == 'query.json' and dirs in self._queries:
             self._queries[dirs] = self._queries[dirs][:length]
 
-    def write(self, path, data, offset, fh):
+    def write(self, path, data, offset, fh=None):
 
         print "write", path, data
 
@@ -147,6 +147,10 @@ class MongoFuse(Operations):
             self._queries[dirs] = data
             return len(data)
         
+        elif len(components) > 2:
+            self._save_doc(path, data)
+            return len(data)
+
         else:
             return 0
 
@@ -189,6 +193,19 @@ class MongoFuse(Operations):
 
         except bson.errors.InvalidId:
             return None
+
+    def _save_doc(self, path, data):
+        """Saves mongo document.
+        """
+
+        components = split_path(path)
+        assert len(components) >= 4
+
+        db = components[1]
+        coll = components[2]
+
+        doc = loads(data)
+        self.conn[db][coll].save(doc)
 
 
 def split_path(path):
