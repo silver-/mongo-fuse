@@ -1,6 +1,7 @@
 # Standard modules:
 import unittest
 import stat
+import textwrap
 
 # Third-party modules:
 import pymongo
@@ -144,6 +145,46 @@ class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
         # Then "regular file" flag should be set
         self.assertTrue(stat.S_ISREG(attrs['st_mode']))
         self.assertFalse(stat.S_ISDIR(attrs['st_mode']))
+
+    def test_read(self):
+
+        # Given MongoDB document
+        coll = self.conn.test_db.test_collection
+        self.addCleanup(self.conn.drop_database, "test_db")
+        coll.drop()
+
+        oid_1 = coll.save({"name": "Aleksey", "age": 27})
+        oid_2 = coll.save({"name": "Svetlana", "age": 25})
+
+        # When reading a file representing the document
+        filename = '/test_db/test_collection/{}.json'.format(oid_1)
+        content = self.fuse.read(filename, 1000, 0, fh=None)
+
+        # Then pretty-printed JSON should be returned
+        self.assertEqual(content, textwrap.dedent("""\
+                {
+                    "age": 27
+                    "name": "Aleksey"
+                }
+        """))
+
+    def test_find_doc(self):
+
+        # Given MongoDB document
+        coll = self.conn.test_db.test_coll
+        self.addCleanup(self.conn.drop_database, "test_db")
+        coll.drop()
+
+        oid = coll.save({"name": "Svetlana", "age": 25})
+
+        # When finding document by path
+        doc = self.fuse._find_doc("/test_db/test_coll/{}.json".format(oid))
+
+        # Then Mongo document should be returned
+        self.assertIsNotNone(doc)
+        self.assertEqual(doc['_id'], oid)
+        self.assertEqual(doc['name'], "Svetlana")
+        self.assertEqual(doc['age'], 25)
 
 
 class SplitPathTest(unittest.TestCase):

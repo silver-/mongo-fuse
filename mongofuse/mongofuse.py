@@ -5,9 +5,11 @@ import stat
 import posix
 import errno
 import argparse
+import json
 
 # Third-party modules:
 import pymongo
+import bson
 from fuse import FUSE, Operations, FuseOSError
 
 class MongoFuse(Operations):
@@ -61,15 +63,30 @@ class MongoFuse(Operations):
         elif len(components) == 2 or len(components) == 3:
             st['st_mode'] = stat.S_IFDIR
 
-        # Second level entries are documents
+        # Thrid level entries are documents
         elif len(components) == 4:
             st['st_mode'] = stat.S_IFREG
+            st['st_size'] = 4096
+            # TODO: Return file size
 
         # Throw error for unknown entries
         else:
             raise FuseOSError(errno.ENOENT)
 
         return st
+    
+    def read(self, path, size, offset, fh):
+
+        components = split_path(path)
+
+        if len(components) == 4:
+            doc = self._find_doc(path)
+            if doc is None:
+                return "{}"
+
+            del doc['_id']
+            return json.dumps(doc, indent=4)
+
 
     def _list_documents(self, db, coll):
         """Returns list of MongoDB documents represented as files.
@@ -83,6 +100,20 @@ class MongoFuse(Operations):
             docs.append("{}.json".format(doc["_id"]))
 
         return docs
+
+    def _find_doc(self, path):
+        """Return mongo document found by given `path`.
+        """
+
+        components = split_path(path)
+        assert len(components) >= 4
+
+        db = components[1]
+        coll = components[2]
+        oid = components[-1].split(".")[0]
+
+        return self.conn[db][coll].find_one(bson.objectid.ObjectId(oid))
+
 
 def split_path(path):
     """Split `path` into list of components.
