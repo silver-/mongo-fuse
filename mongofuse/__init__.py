@@ -13,7 +13,7 @@ class MongoFuse(Operations):
         self.conn = pymongo.Connection(conn_string)
 
     def readdir(self, path, fh):
-        return self.conn.database_names()
+        return [".", ".."] + self.conn.database_names()
 
 
 

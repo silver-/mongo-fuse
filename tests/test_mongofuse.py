@@ -34,6 +34,10 @@ class MongoFuseTest(unittest.TestCase):
         self.assertIn('test_2', readdir)
         self.assertIn('test_3', readdir)
 
+        # And special "." and ".." folders should be listed as well
+        self.assertIn(".", readdir)
+        self.assertIn("..", readdir)
+
 
 if __name__ == '__main__':
     unittest.main()
