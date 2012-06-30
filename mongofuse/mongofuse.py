@@ -82,9 +82,12 @@ class MongoFuse(Operations):
 
         # Thrid level entries are documents
         elif len(components) == 4:
-            st['st_mode'] |= stat.S_IFREG
-            st['st_size'] = len(dumps(self._find_doc(path)))
+            doc = self._find_doc(path)
+            if doc is None:
+                raise FuseOSError(errno.ENOENT)
 
+            st['st_mode'] |= stat.S_IFREG
+            st['st_size'] = len(dumps(doc))
 
         # Throw error for unknown entries
         else:

@@ -174,10 +174,13 @@ class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
 
     def test_raise_error_on_unexisting_files(self):
 
-        # Error should be raised when attempting to read a file that doesn't
+        # Error should be raised when attempting to access file that doesn't
         # represent existing doc and has no special meaning,
         with self.assertRaises(fuse.FuseOSError):
             self.fuse.read("/test_db/test_coll/some_file.txt", size=1000)
+
+        with self.assertRaises(fuse.FuseOSError):
+            self.fuse.getattr("/test_db/test_coll/some_file.txt")
 
     def test_find_doc(self):
 
