@@ -52,7 +52,7 @@ class RepresentDatabasesAsFoldersTest(unittest.TestCase):
         attrs = self.fuse.getattr('/test_1')
 
         # Then folder flag should be set
-        self.assertTrue(stat.S_ISDIR(attrs['st_mod']))
+        self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
 class SplitPathTest(unittest.TestCase):
