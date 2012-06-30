@@ -67,7 +67,6 @@ class MongoFuse(Operations):
         elif len(components) == 4:
             st['st_mode'] = stat.S_IFREG
             st['st_size'] = 4096
-            # TODO: Return file size
 
         # Throw error for unknown entries
         else:
@@ -85,7 +84,7 @@ class MongoFuse(Operations):
                 return "{}"
 
             del doc['_id']
-            return json.dumps(doc, indent=4)
+            return dumps(doc)
 
 
     def _list_documents(self, db, coll):
@@ -125,6 +124,16 @@ def split_path(path):
 
     else:
         return [head]
+
+def dumps(doc):
+    """Returns pretty-printed `doc`. """
+
+    return json.dumps(doc, indent=4)
+
+
+
+
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)

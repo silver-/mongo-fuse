@@ -105,6 +105,7 @@ class RepresentCollectionsAsSubfoldersTest(unittest.TestCase):
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
+@unittest.skip("")
 class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
 
     def setUp(self):
@@ -145,6 +146,8 @@ class ShowFirstDocumentsAsJsonFilesTest(unittest.TestCase):
         # Then "regular file" flag should be set
         self.assertTrue(stat.S_ISREG(attrs['st_mode']))
         self.assertFalse(stat.S_ISDIR(attrs['st_mode']))
+
+        # TODO: And correct file size should be returned
 
     def test_read(self):
 
@@ -212,6 +215,41 @@ class SplitPathTest(unittest.TestCase):
         self.assertEqual(components, ["/", "tmp", "test"])
 
 
+class DumpsTest(unittest.TestCase):
+
+    def test_should_return_pretty_printed_bson_documents(self):
+
+        # Given a document
+        doc = {"age": 26,
+               "name": "Svetlana", 
+               "skills": [{
+                   "skill": "C++",
+                   "level": 7
+                },
+                {
+                    "skill": "Python",
+                    "level": 7
+                }]
+            }
+
+        # dumps() should return pretty-printed version of the document
+        expected = textwrap.dedent("""\
+            {
+                "skills": [
+                    {
+                        "skill": "C++", 
+                        "level": 7
+                    }, 
+                    {
+                        "skill": "Python", 
+                        "level": 7
+                    }
+                ], 
+                "age": 26, 
+                "name": "Svetlana"
+            }""")
+        self.maxDiff = None
+        self.assertMultiLineEqual(mongofuse.dumps(doc), expected)
 
 
 if __name__ == '__main__':
