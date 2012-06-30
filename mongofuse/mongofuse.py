@@ -37,7 +37,6 @@ class MongoFuse(Operations):
         else:
             raise FuseOSError(errno.ENOENT)
 
-            
 
     def getattr(self, path, fh=None):
 

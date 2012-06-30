@@ -104,7 +104,6 @@ class RepresentCollectionsAsSubfoldersTest(unittest.TestCase):
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
-
 class SplitPathTest(unittest.TestCase):
 
     def test_should_split_path_into_list_of_components(self):
