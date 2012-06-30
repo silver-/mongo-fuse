@@ -50,7 +50,6 @@ class MongoFuse(Operations):
         return st
 
 
-
 def split_path(path):
     """Split `path` into list of components.
     """
@@ -62,10 +61,12 @@ def split_path(path):
     else:
         return [head]
 
-
-if __name__ == '__main__':
+def main():
     if len(sys.argv) != 2:
         print "Usage: %s <mount-point>" % sys.argv[0]
         sys.exit(1)
 
     fuse = FUSE(MongoFuse("localhost:27017"), sys.argv[1], foreground=True)
+
+if __name__ == '__main__':
+    main()
