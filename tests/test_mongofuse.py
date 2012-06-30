@@ -2,13 +2,14 @@ import unittest
 import pymongo
 import mongofuse
 
-TEST_DB_HOST = "localhost:27017"
+TEST_DB = "localhost:27017"
 
 
 class MongoFuseTest(unittest.TestCase):
 
     def setUp(self):
-        self.conn = pymongo.Connection(TEST_DB_HOST)
+        self.conn = pymongo.Connection(TEST_DB)
+        self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
 
     def test_should_represent_databases_as_folders(self):
 
@@ -17,17 +18,21 @@ class MongoFuseTest(unittest.TestCase):
         db2 = self.conn['test_2']
         db3 = self.conn['test_3']
 
+        self.addCleanup(self.conn.drop_database, 'test_1')
+        self.addCleanup(self.conn.drop_database, 'test_2')
+        self.addCleanup(self.conn.drop_database, 'test_3')
+
         db1.test.insert({"db": "test_1"})
         db2.test.insert({"db": "test_2"})
         db3.test.insert({"db": "test_3"})
 
         # When listing files in root dir
-        listdir = mongofuse.MongoFuse().listdir('/')
+        readdir = self.fuse.readdir('/', fh=None)
 
         # Then database names should appear in listed files
-        self.assertIn('test_1', listdir)
-        self.assertIn('test_2', listdir)
-        self.assertIn('test_3', listdir)
+        self.assertIn('test_1', readdir)
+        self.assertIn('test_2', readdir)
+        self.assertIn('test_3', readdir)
 
 
 if __name__ == '__main__':
