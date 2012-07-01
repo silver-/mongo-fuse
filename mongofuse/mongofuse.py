@@ -74,11 +74,16 @@ class MongoFuse(Operations):
         elif len(components) == 2 or len(components) == 3:
             st['st_mode'] |= stat.S_IFDIR
 
+        # Special file to filter collection
         elif fname == "query.json":
             if dirs not in self._queries:
                 raise FuseOSError(errno.ENOENT)
             st['st_mode'] |= stat.S_IFREG
             st['st_size'] = len(self._queries[dirs])
+
+        # Special file to create new documents
+        elif fname == "new.json":
+            st['st_mode'] |= stat.S_IFREG
 
         # Thrid level entries are documents
         elif len(components) == 4:
@@ -121,7 +126,10 @@ class MongoFuse(Operations):
 
         print "Create", path
         dirs, fname = os.path.split(path)
-        self._queries[dirs] = "{}"
+
+        if fname == "query.json":
+            self._queries[dirs] = "{}"
+
         self.fd += 1
         return self.fd
 
@@ -136,7 +144,7 @@ class MongoFuse(Operations):
         if fname == 'query.json' and dirs in self._queries:
             self._queries[dirs] = self._queries[dirs][:length]
 
-    def write(self, path, data, offset, fh=None):
+    def write(self, path, data, offset=0, fh=None):
 
         print "write", path, data
 
@@ -160,6 +168,9 @@ class MongoFuse(Operations):
         if len(components) > 3:
             self._remove_doc(path)
 
+        # TODO: Drop database
+        # TODO: Drop collection
+
     def statfs(self, path):
         # TODO: Report real data
         return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
@@ -178,7 +189,7 @@ class MongoFuse(Operations):
             return []
 
         docs = []
-        for doc in self.conn[db][coll].find(query).limit(10):
+        for doc in self.conn[db][coll].find(query).limit(32):
             docs.append("{}.json".format(doc["_id"]))
 
         return docs

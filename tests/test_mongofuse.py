@@ -244,6 +244,21 @@ class FilterCollectionsWithSavedQueries(FuseTest):
         self.assertEqual(self.fuse.getattr(filename)['st_size'], len(query))
 
 
+class CreateDocumentTest(FuseTest):
+
+    def test_should_create_new_doc_when_writing_special_file(self):
+
+        self.conn.drop_database("test_db")
+
+        # When writing to special "new.json" file
+        content = '{"foo": "bar"}'
+        self.fuse.write("/test_db/test_coll/new.json", content)
+
+        # Then new document should be created in database
+        doc = self.conn.test_db.test_coll.find_one()
+        self.assertIsNotNone(doc)
+        self.assertEqual(doc['foo'], "bar")
+
 class EditExistingDocsTest(FuseTest):
 
     def test_should_update_existing_documents_on_file_write(self):
