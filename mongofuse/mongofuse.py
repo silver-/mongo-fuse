@@ -32,7 +32,6 @@ class MongoFuse(Operations):
 
     def readdir(self, path, fh=None):
 
-        print "readdir", path
 
         components = split_path(path)
         dirs, fname = os.path.split(path)
@@ -60,7 +59,6 @@ class MongoFuse(Operations):
 
     def getattr(self, path, fh=None):
 
-        print "getattr", path
 
         st = dict(st_atime=0,
                   st_mtime=0,
@@ -121,18 +119,15 @@ class MongoFuse(Operations):
         return st
     
     def getxattr(self, path, name, position=0):
-        print "getxattr", path
         return ''
 
     def read(self, path, size, offset=0, fh=None):
 
-        print "read", path
 
         components = split_path(path)
         dirs, fname = os.path.split(path)
 
         if fname == "query.json" and dirs in self._queries:
-            print "READ QUERY"
             return self._queries[dirs]
 
         if len(components) >= 4:
@@ -144,7 +139,6 @@ class MongoFuse(Operations):
 
     def create(self, path, mode):
 
-        print "Create", path
         dirs, fname = os.path.split(path)
 
         if fname == "query.json":
@@ -156,7 +150,6 @@ class MongoFuse(Operations):
         except bson.errors.InvalidId:
             pass
         else:
-            print "create objectid", path
             self._created.add(path)
 
         self.fd += 1
@@ -175,7 +168,6 @@ class MongoFuse(Operations):
 
     def write(self, path, data, offset=0, fh=None):
 
-        print "write", path, data
 
         components = split_path(path)
         dirs, fname = os.path.split(path)
@@ -216,7 +208,6 @@ class MongoFuse(Operations):
 
         self._dirs[dirs].add(dirname)
 
-        print "mkdir", self._dirs
 
     def chmod(self, path, mode):
         return 0
@@ -321,7 +312,6 @@ def split_path(path):
         return [head]
 
 def dumps(doc):
-    """Returns pretty-printed `doc`. """
 
     return json.dumps(doc,
                       indent=4,
