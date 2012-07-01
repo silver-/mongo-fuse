@@ -37,17 +37,17 @@ class MongoFuse(Operations):
         components = split_path(path)
         dirs, fname = os.path.split(path)
 
-        # Root entry is a directory
+        # Root entries are database names
         if len(components) == 1 and path == "/":
             return [".", ".."] + self.conn.database_names()
 
-        # First level entries are database names
+        # Second level entries are collection names
         elif len(components) == 2:
             db = components[1]
             return [".", ".."] + self.conn[db].collection_names()
 
-        # Third level entries are mongo documents
-        elif len(components) == 3:
+        # Third and more level entries are mongo documents and user subfolders
+        elif len(components) >= 3:
             files = [".", ".."] + \
                     self._list_documents(path) + \
                     list(self._dirs.get(path, []))
@@ -76,7 +76,7 @@ class MongoFuse(Operations):
         if len(components) == 1 and path == "/":
             st['st_mode'] |= stat.S_IFDIR
 
-        # First level entries are database names or collections names
+        # First and second level entries are database or collection names
         elif len(components) in (2,3):
             st['st_mode'] |= stat.S_IFDIR
 
@@ -96,8 +96,8 @@ class MongoFuse(Operations):
             st['st_mode'] |= stat.S_IFREG
             # FIXME: Report ENOENT after new.json is saved
 
-        # Thrid level entries are documents
-        elif len(components) == 4:
+        # Thrid and more level entries are documents
+        elif len(components) >= 4:
             doc = self._find_doc(path)
             if doc is None:
                 # Entries prepared by create() call
@@ -130,7 +130,7 @@ class MongoFuse(Operations):
             print "READ QUERY"
             return self._queries[dirs]
 
-        if len(components) == 4:
+        if len(components) >= 4:
             doc = self._find_doc(path)
             if doc is None:
                 raise FuseOSError(errno.ENOENT)
@@ -194,6 +194,7 @@ class MongoFuse(Operations):
 
         # TODO: Drop database
         # TODO: Drop collection
+        # TODO: Accurate delete of collection views
 
     def mkdir(self, path, mode):
         dirs, dirname = os.path.split(path)
