@@ -211,6 +211,9 @@ class MongoFuse(Operations):
 
     def chmod(self, path, mode):
         return 0
+    
+    def chown(self, path, uid, gid):
+        pass
 
     def statfs(self, path):
         # TODO: Report real data
