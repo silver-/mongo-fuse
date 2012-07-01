@@ -24,6 +24,7 @@ class MongoFuse(Operations):
     def __init__(self, conn_string):
         self.conn = pymongo.Connection(conn_string)
         self._queries = {}
+        self._created = set()
         self.fd = 0
 
     def readdir(self, path, fh=None):
@@ -84,12 +85,17 @@ class MongoFuse(Operations):
         # Special file to create new documents
         elif fname == "new.json":
             st['st_mode'] |= stat.S_IFREG
+            # FIXME: Report ENOENT after new.json is saved
 
         # Thrid level entries are documents
         elif len(components) == 4:
             doc = self._find_doc(path)
             if doc is None:
-                raise FuseOSError(errno.ENOENT)
+                # Entries prepared by create() call
+                if path not in self._created:
+                    raise FuseOSError(errno.ENOENT)
+                else:
+                    doc = ""
 
             st['st_mode'] |= stat.S_IFREG
             st['st_size'] = len(dumps(doc))
@@ -130,6 +136,15 @@ class MongoFuse(Operations):
         if fname == "query.json":
             self._queries[dirs] = "{}"
 
+#        # Allow creating files with names looking like objectid
+        try:
+            bson.objectid.ObjectId(os.path.splitext(fname)[0])
+        except bson.errors.InvalidId:
+            pass
+        else:
+            print "create objectid", path
+            self._created.add(path)
+
         self.fd += 1
         return self.fd
 
@@ -155,7 +170,7 @@ class MongoFuse(Operations):
             self._queries[dirs] = data
             return len(data)
         
-        elif len(components) > 2:
+        elif len(components) > 3:
             self._save_doc(path, data)
             return len(data)
 
@@ -220,12 +235,22 @@ class MongoFuse(Operations):
         """
 
         components = split_path(path)
+        dirs, fname = os.path.split(path)
         assert len(components) >= 4
 
         db = components[1]
         coll = components[2]
 
         doc = loads(data)
+
+        # If document doesn't have own _id field, but named like ObjectId,
+        # use that id
+        if '_id' not in doc:
+            try:
+                doc['_id'] = bson.objectid.ObjectId(os.path.splitext(fname)[0])
+            except bson.errors.InvalidId:
+                pass
+
         self.conn[db][coll].save(doc)
 
     def _remove_doc(self, path):

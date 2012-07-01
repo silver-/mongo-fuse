@@ -259,6 +259,21 @@ class CreateDocumentTest(FuseTest):
         self.assertIsNotNone(doc)
         self.assertEqual(doc['foo'], "bar")
 
+    def test_should_create_new_doc_when_filename_looks_like_objectid(self):
+
+        # When writing to a file with objectid-like name
+        content = '{"foo": "bar"}'
+        oid = bson.objectid.ObjectId()
+        filename = "/test_db/test_coll/{}.json".format(oid)
+        self.fuse.create(filename, 0755)
+        self.fuse.write(filename, content)
+
+        # Then MongoDB document with this id should be created
+        doc = self.conn['test_db']['test_coll'].find_one(oid)
+        self.assertIsNotNone(doc)
+        self.assertEqual(doc['foo'], 'bar')
+
+
 class EditExistingDocsTest(FuseTest):
 
     def test_should_update_existing_documents_on_file_write(self):
