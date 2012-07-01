@@ -6,12 +6,14 @@ import posix
 import errno
 import argparse
 import json
+import collections
 
 # Third-party modules:
 import pymongo
 import bson
 import bson.json_util
 from fuse import FUSE, Operations, FuseOSError
+
 
 class MongoFuse(Operations):
     """File system interface for MongoDB.
@@ -23,8 +25,9 @@ class MongoFuse(Operations):
 
     def __init__(self, conn_string):
         self.conn = pymongo.Connection(conn_string)
-        self._queries = {}
+        self._queries = {}                            # path => query_content
         self._created = set()
+        self._dirs = collections.defaultdict(set)     # path => {subdirs}
         self.fd = 0
 
     def readdir(self, path, fh=None):
@@ -45,7 +48,9 @@ class MongoFuse(Operations):
 
         # Third level entries are mongo documents
         elif len(components) == 3:
-            files = [".", ".."] + self._list_documents(path)
+            files = [".", ".."] + \
+                    self._list_documents(path) + \
+                    list(self._dirs.get(path, []))
             if path in self._queries:
                 files += ['query.json']
             return files
@@ -62,7 +67,7 @@ class MongoFuse(Operations):
                   st_size=0,
                   st_gid=os.getgid(),
                   st_uid=os.getuid(),
-                  st_mode=0755)
+                  st_mode=0770)
 
         components = split_path(path)
         dirs, fname = os.path.split(path)
@@ -72,7 +77,11 @@ class MongoFuse(Operations):
             st['st_mode'] |= stat.S_IFDIR
 
         # First level entries are database names or collections names
-        elif len(components) == 2 or len(components) == 3:
+        elif len(components) in (2,3):
+            st['st_mode'] |= stat.S_IFDIR
+
+        # User-created folders
+        elif fname in self._dirs.get(dirs, []):
             st['st_mode'] |= stat.S_IFDIR
 
         # Special file to filter collection
@@ -185,6 +194,12 @@ class MongoFuse(Operations):
 
         # TODO: Drop database
         # TODO: Drop collection
+
+    def mkdir(self, path, mode):
+        dirs, dirname = os.path.split(path)
+        self._dirs[dirs].add(dirname)
+
+        print "mkdir", self._dirs
 
     def statfs(self, path):
         # TODO: Report real data

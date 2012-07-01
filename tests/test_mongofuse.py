@@ -313,6 +313,21 @@ class DeleteDocumentTest(FuseTest):
         self.assertIsNone(doc)
 
 
+class CreateCustomCollectionViews(FuseTest):
+
+    def test_should_create_subfolder_in_collection_folders(self):
+
+        # When creating subfolder under collection dir
+        self.fuse.mkdir("/test_db/test_coll/subfolder", 0755)
+
+        # Then it should be listed
+        readdir = self.fuse.readdir("/test_db/test_coll")
+        self.assertIn("subfolder", readdir)
+
+        # And it should be marked with directory flag
+        attrs = self.fuse.getattr("/test_db/test_coll")
+        self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
+
 class SplitPathTest(unittest.TestCase):
 
     def test_should_split_path_into_list_of_components(self):
