@@ -168,14 +168,14 @@ class MongoFuse(Operations):
         """Returns list of MongoDB documents represented as files.
         """
         
-        # FIXME: Need only check for special ./.. folders in path
-        if "." in path:
-            return []
-
         components = split_path(path)
         db = components[1]
         coll = components[2]
         query = loads(self._queries.get(path, "{}"))
+
+        # Database names cannot contain the character '.'
+        if "." in db:
+            return []
 
         docs = []
         for doc in self.conn[db][coll].find(query).limit(10):
@@ -193,6 +193,10 @@ class MongoFuse(Operations):
         db = components[1]
         coll = components[2]
         oid = components[-1].split(".")[0]
+
+        # Database names cannot contain the character '.'
+        if "." in db:
+            return None
 
         try:
             return self.conn[db][coll].find_one(bson.objectid.ObjectId(oid))
