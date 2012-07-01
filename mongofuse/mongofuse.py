@@ -76,8 +76,13 @@ class MongoFuse(Operations):
         if len(components) == 1 and path == "/":
             st['st_mode'] |= stat.S_IFDIR
 
-        # First and second level entries are database or collection names
-        elif len(components) in (2,3):
+        # First level entry maybe a database name
+        elif len(components) == 2 and components[-1] in self.conn.database_names():
+            st['st_mode'] |= stat.S_IFDIR
+
+        # Second level entry maybe a collection name
+        elif len(components) == 3 and \
+                (components[-1] in self.conn[components[1]].collection_names()):
             st['st_mode'] |= stat.S_IFDIR
 
         # User-created folders
@@ -197,14 +202,28 @@ class MongoFuse(Operations):
         # TODO: Accurate delete of collection views
 
     def mkdir(self, path, mode):
+
+        components = split_path(path)
         dirs, dirname = os.path.split(path)
+
+        if dirs == "/" and not dirname in self.conn.database_names():
+            self.conn[dirname].create_collection("system.indexes")
+
+        elif len(components) == 3:
+            db = components[1]
+            coll = components[2]
+            self.conn[db].create_collection(coll)
+
         self._dirs[dirs].add(dirname)
 
         print "mkdir", self._dirs
 
+    def chmod(self, path, mode):
+        return 0
+
     def statfs(self, path):
         # TODO: Report real data
-        return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
+        return dict(f_bsize=512, f_blocks=4096*1024, f_bavail=2048*1024)
 
     def _list_documents(self, path):
         """Returns list of MongoDB documents represented as files.
@@ -320,7 +339,7 @@ def main():
     parser.add_argument("-f", "--foreground",
                         help="Run foreground",
                         action="store_true",
-                        default=True)           # TODO: Change to False
+                        default=False)
     parser.add_argument("--db",
                         help="MongoDB connection string. Default is %(default)s",
                         default="localhost:27017",

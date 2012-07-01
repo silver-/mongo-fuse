@@ -313,9 +313,28 @@ class DeleteDocumentTest(FuseTest):
         self.assertIsNone(doc)
 
 
+class CreateDatabaseAndCollectionTest(FuseTest):
+
+    def test_should_create_new_db_and_collection_with_mkdir(self):
+
+        # Given absent test database
+        self.conn.drop_database("test_db")
+
+        # When creating folder
+        self.fuse.mkdir("/test_db", 0755)
+        self.fuse.mkdir("/test_db/test_coll", 0755)
+
+        # Then new database and/or collection should be created
+        self.assertIn('test_db', self.conn.database_names())
+        self.assertIn('test_coll', self.conn.test_db.collection_names())
+
+
 class CreateCustomCollectionViews(FuseTest):
 
     def test_should_create_subfolder_in_collection_folders(self):
+
+        # Given MongoDB database and collection
+        self.conn.test_db.create_collection('test_coll')
 
         # When creating subfolder under collection dir
         self.fuse.mkdir("/test_db/test_coll/subfolder", 0755)
