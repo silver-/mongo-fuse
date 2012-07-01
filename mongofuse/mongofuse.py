@@ -154,6 +154,12 @@ class MongoFuse(Operations):
         else:
             return 0
 
+    def unlink(self, path):
+
+        components = split_path(path)
+        if len(components) > 3:
+            self._remove_doc(path)
+
     def statfs(self, path):
         # TODO: Report real data
         return dict(f_bsize=512, f_blocks=4096, f_bavail=2048)
@@ -206,6 +212,26 @@ class MongoFuse(Operations):
 
         doc = loads(data)
         self.conn[db][coll].save(doc)
+
+    def _remove_doc(self, path):
+        """Deletes mongo document. """
+
+        components = split_path(path)
+        assert len(components) >= 4
+
+        db = components[1]
+        coll = components[2]
+        oid = components[-1].split(".")[0]
+
+        try:
+            self.conn[db][coll].remove(bson.objectid.ObjectId(oid))
+
+        except bson.errors.InvalidId:
+            return False
+
+        else:
+            return True
+
 
 
 def split_path(path):

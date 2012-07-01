@@ -266,6 +266,23 @@ class EditExistingDocsTest(FuseTest):
         self.assertEqual(doc['new'], 'key')
 
 
+class DeleteDocumentTest(FuseTest):
+
+    def test_should_delete_mongo_doc_on_unlink_file_operation(self):
+
+        # Given MongoDB document
+        coll = self.conn.test_db.test_coll
+        oid = coll.save({"foo": "bar"})
+
+        # When deleting corresponding file
+        filename = "/test_db/test_coll/{}.json".format(oid)
+        self.fuse.unlink(filename)
+
+        # Then document should be removed from database
+        doc = coll.find_one(bson.objectid.ObjectId(oid))
+        self.assertIsNone(doc)
+
+
 class SplitPathTest(unittest.TestCase):
 
     def test_should_split_path_into_list_of_components(self):
