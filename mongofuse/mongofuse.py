@@ -54,7 +54,8 @@ class MongoFuse(LoggingMixIn, Operations):
             names = [".", ".."] + self.conn.database_names() 
             st_mode = 0770 | stat.S_IFDIR
             for name in names:
-                self.attrs_cache[name] = MongoFuse.Stat(st_mode=st_mode)
+                fullname = os.path.join(path, name)
+                self.attrs_cache[fullname] = MongoFuse.Stat(st_mode=st_mode)
             return names
 
         # Second level entries are collection names
@@ -82,7 +83,7 @@ class MongoFuse(LoggingMixIn, Operations):
         dirs, fname = os.path.split(path)
 
         # Try to find cached attrs
-        cached = self.attrs_cache.get(fname)
+        cached = self.attrs_cache.get(path)
         if cached:
             return cached
 
@@ -253,7 +254,8 @@ class MongoFuse(LoggingMixIn, Operations):
             # Cache doc attributes
             st = MongoFuse.Stat(st_mode=0660 | stat.S_IFREG,
                                 st_size=len(dumps(doc)))
-            self.attrs_cache[fname] = st
+            fullname = os.path.join(path, fname)
+            self.attrs_cache[fullname] = st
 
         return docs
 
