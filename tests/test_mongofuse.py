@@ -19,6 +19,9 @@ class FuseTest(unittest.TestCase):
     def setUp(self):
         self.conn = pymongo.Connection(TEST_DB, safe=True)
         self.fuse = mongofuse.MongoFuse(conn_string=TEST_DB)
+        self.fuse.attrs_cache = mongofuse.LRUCache(expire_secs=0)
+
+        self.conn.drop_database('test_db')
 
 
 class RepresentDatabasesAsFoldersTest(FuseTest):
@@ -144,6 +147,27 @@ class ShowFirstDocumentsAsJsonFilesTest(FuseTest):
         # Then "regular file" flag should be set
         self.assertTrue(stat.S_ISREG(attrs['st_mode']))
         self.assertFalse(stat.S_ISDIR(attrs['st_mode']))
+
+    def test_getattr_cache(self):
+
+        # Given attributes caching is on
+        self.fuse.attrs_cache = mongofuse.LRUCache(expire_secs=100)
+
+        # And db documents
+        coll = self.conn.test_db.test_collection
+        oid_1 = coll.save({"name": "Aleksey", "age": 27})
+
+        # When calling readdir
+        self.fuse.readdir('/test_db/test_collection')
+
+        # Then file attributes should be cached for a while
+        # We use side-effect of caching here: document would be still
+        # visible by getattr after actualy deleting it
+        coll.remove(oid_1)
+        fname = '/test_db/test_collection/{}.json'.format(oid_1)
+        attrs = self.fuse.getattr(fname)
+        self.assertTrue(attrs['st_size'])
+        self.assertTrue(stat.S_ISREG(attrs['st_mode']))
 
     def test_read(self):
 

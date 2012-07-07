@@ -30,6 +30,7 @@ class MongoFuse(LoggingMixIn, Operations):
         self._created = set()
         self._dirs = collections.defaultdict(set)     # path => {subdirs}
         self.fd = 0
+        self.attrs_cache = LRUCache(expire_secs=2)
 
     def readdir(self, path, fh=None):
 
@@ -102,6 +103,10 @@ class MongoFuse(LoggingMixIn, Operations):
 
         # Thrid and more level entries are documents
         elif len(components) >= 4:
+            cached = self.attrs_cache.get(fname)
+            if cached:
+                return cached
+
             doc = self._find_doc(path)
             if doc is None:
                 # Entries prepared by create() call
@@ -228,6 +233,12 @@ class MongoFuse(LoggingMixIn, Operations):
         db = components[1]
         coll = components[2]
         query = loads(self._queries.get(path, "{}"))
+        st = dict(st_atime=0,
+                  st_mtime=0,
+                  st_size=0,
+                  st_gid=os.getgid(),
+                  st_uid=os.getuid(),
+                  st_mode=0770 | stat.S_IFREG)
 
         # Database names cannot contain the character '.'
         if "." in db:
@@ -235,7 +246,13 @@ class MongoFuse(LoggingMixIn, Operations):
 
         docs = []
         for doc in self.conn[db][coll].find(query).limit(32):
-            docs.append("{}.json".format(doc["_id"]))
+            fname = "{}.json".format(doc["_id"])
+            docs.append(fname)
+
+            # Cache doc attributes
+            attrs = st.copy()
+            attrs['st_size'] = len(dumps(doc))
+            self.attrs_cache[fname] = attrs
 
         return docs
 
