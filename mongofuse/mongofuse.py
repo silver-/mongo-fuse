@@ -61,7 +61,12 @@ class MongoFuse(LoggingMixIn, Operations):
         # Second level entries are collection names
         elif len(components) == 2:
             db = components[1]
-            return [".", ".."] + self.conn[db].collection_names()
+            names = [".", ".."] + self.conn[db].collection_names()
+            st_mode = 0770 | stat.S_IFDIR
+            for name in names:
+                fullname = os.path.join(path, name)
+                self.attrs_cache[fullname] = MongoFuse.Stat(st_mode=st_mode)
+            return names
 
         # Third and more level entries are mongo documents and user subfolders
         elif len(components) >= 3:

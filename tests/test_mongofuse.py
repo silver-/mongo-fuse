@@ -127,6 +127,24 @@ class RepresentCollectionsAsSubfoldersTest(FuseTest):
 
         # Then folder flag should be set
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
+    
+    def test_getattr_cache(self):
+
+        # Given attributes caching is on
+        self.fuse.attrs_cache = mongofuse.LRUCache(expire_secs=100)
+
+        # And MongoDB collection exists
+        db = self.conn.test_db.test_coll.insert({"foo": "bar"})
+
+        # When calling readdir
+        self.fuse.readdir('/test_db')
+
+        # Then attributes for collections should be cached
+        # We use a side-effect of caching here: entries are still
+        # visible by getattr after actualy deleting it
+        self.conn.drop_database('test_db')
+        attrs = self.fuse.getattr('/test_db/test_coll')
+        self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
 class ShowFirstDocumentsAsJsonFilesTest(FuseTest):
