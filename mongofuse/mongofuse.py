@@ -34,7 +34,6 @@ class MongoFuse(LoggingMixIn, Operations):
 
     def readdir(self, path, fh=None):
 
-
         components = split_path(path)
         dirs, fname = os.path.split(path)
 
@@ -60,7 +59,6 @@ class MongoFuse(LoggingMixIn, Operations):
             raise FuseOSError(errno.ENOENT)
 
     def getattr(self, path, fh=None):
-
 
         st = dict(st_atime=0,
                   st_mtime=0,
@@ -123,12 +121,11 @@ class MongoFuse(LoggingMixIn, Operations):
             raise FuseOSError(errno.ENOENT)
 
         return st
-    
+
     def getxattr(self, path, name, position=0):
         return ''
 
     def read(self, path, size, offset=0, fh=None):
-
 
         components = split_path(path)
         dirs, fname = os.path.split(path)
@@ -174,7 +171,6 @@ class MongoFuse(LoggingMixIn, Operations):
 
     def write(self, path, data, offset=0, fh=None):
 
-
         components = split_path(path)
         dirs, fname = os.path.split(path)
 
@@ -213,7 +209,6 @@ class MongoFuse(LoggingMixIn, Operations):
             self.conn[db].create_collection(coll)
 
         self._dirs[dirs].add(dirname)
-
 
     def chmod(self, path, mode):
         return 0
@@ -367,6 +362,7 @@ def split_path(path):
     else:
         return [head]
 
+
 def dumps(doc):
 
     return json.dumps(doc,
@@ -374,10 +370,12 @@ def dumps(doc):
                       sort_keys=True,
                       default=bson.json_util.default)
 
+
 def loads(string):
     """Returns document parsed from `string`. """
 
     return json.loads(string, object_hook=bson.json_util.object_hook)
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
