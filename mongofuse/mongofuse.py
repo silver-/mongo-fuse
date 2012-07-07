@@ -246,7 +246,7 @@ class MongoFuse(LoggingMixIn, Operations):
             docs.append(fname)
 
             # Cache doc attributes
-            st = MongoFuse.Stat(st_mode=0770 | stat.S_IFREG,
+            st = MongoFuse.Stat(st_mode=0660 | stat.S_IFREG,
                                 st_size=len(dumps(doc)))
             self.attrs_cache[fname] = st
 
