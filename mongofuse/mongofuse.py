@@ -24,6 +24,18 @@ class MongoFuse(LoggingMixIn, Operations):
 
     """
 
+    class Stat(dict):
+
+        def __init__(self, **kwargs):
+            default = dict(st_atime=0,
+                           st_mtime=0,
+                           st_size=0,
+                           st_gid=os.getgid(),
+                           st_uid=os.getuid(),
+                           st_mode=0770)
+            default.update(kwargs)
+            dict.__init__(self, default)
+
     def __init__(self, conn_string):
         self.conn = pymongo.Connection(conn_string, safe=True)
         self._queries = {}                            # path => query_content
@@ -60,12 +72,7 @@ class MongoFuse(LoggingMixIn, Operations):
 
     def getattr(self, path, fh=None):
 
-        st = dict(st_atime=0,
-                  st_mtime=0,
-                  st_size=0,
-                  st_gid=os.getgid(),
-                  st_uid=os.getuid(),
-                  st_mode=0770)
+        st = MongoFuse.Stat()
 
         components = split_path(path)
         dirs, fname = os.path.split(path)
@@ -228,12 +235,6 @@ class MongoFuse(LoggingMixIn, Operations):
         db = components[1]
         coll = components[2]
         query = loads(self._queries.get(path, "{}"))
-        st = dict(st_atime=0,
-                  st_mtime=0,
-                  st_size=0,
-                  st_gid=os.getgid(),
-                  st_uid=os.getuid(),
-                  st_mode=0770 | stat.S_IFREG)
 
         # Database names cannot contain the character '.'
         if "." in db:
@@ -245,9 +246,9 @@ class MongoFuse(LoggingMixIn, Operations):
             docs.append(fname)
 
             # Cache doc attributes
-            attrs = st.copy()
-            attrs['st_size'] = len(dumps(doc))
-            self.attrs_cache[fname] = attrs
+            st = MongoFuse.Stat(st_mode=0770 | stat.S_IFREG,
+                                st_size=len(dumps(doc)))
+            self.attrs_cache[fname] = st
 
         return docs
 

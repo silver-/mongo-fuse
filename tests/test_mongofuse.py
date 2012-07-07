@@ -372,6 +372,7 @@ class CreateCustomCollectionViews(FuseTest):
         attrs = self.fuse.getattr("/test_db/test_coll")
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
+
 class SplitPathTest(unittest.TestCase):
 
     def test_should_split_path_into_list_of_components(self):
@@ -470,8 +471,6 @@ class LRUCacheTest(unittest.TestCase):
 
         # Then outdated items should be removed from cache
         self.assertNotIn('answer', cache)
-
-
 
 
 if __name__ == '__main__':
