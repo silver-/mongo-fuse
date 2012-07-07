@@ -51,7 +51,11 @@ class MongoFuse(LoggingMixIn, Operations):
 
         # Root entries are database names
         if len(components) == 1 and path == "/":
-            return [".", ".."] + self.conn.database_names()
+            names = [".", ".."] + self.conn.database_names() 
+            st_mode = 0770 | stat.S_IFDIR
+            for name in names:
+                self.attrs_cache[name] = MongoFuse.Stat(st_mode=st_mode)
+            return names
 
         # Second level entries are collection names
         elif len(components) == 2:
@@ -76,6 +80,11 @@ class MongoFuse(LoggingMixIn, Operations):
 
         components = split_path(path)
         dirs, fname = os.path.split(path)
+
+        # Try to find cached attrs
+        cached = self.attrs_cache.get(fname)
+        if cached:
+            return cached
 
         # Root entry is a directory
         if len(components) == 1 and path == "/":
@@ -108,10 +117,6 @@ class MongoFuse(LoggingMixIn, Operations):
 
         # Thrid and more level entries are documents
         elif len(components) >= 4:
-            cached = self.attrs_cache.get(fname)
-            if cached:
-                return cached
-
             doc = self._find_doc(path)
             if doc is None:
                 # Entries prepared by create() call

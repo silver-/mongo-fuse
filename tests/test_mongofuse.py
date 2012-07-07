@@ -65,6 +65,24 @@ class RepresentDatabasesAsFoldersTest(FuseTest):
 
         # Then folder flag should be set
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
+    
+    def test_getattr_cache(self):
+
+        # Given attributes caching is on
+        self.fuse.attrs_cache = mongofuse.LRUCache(expire_secs=100)
+
+        # And MongoDB database exists
+        db = self.conn.test_db.create_collection('dummy')
+
+        # When calling readdir
+        self.fuse.readdir('/')
+
+        # Then database attributes should be cached
+        # We use a side-effect of caching here: database would be still
+        # visible by getattr after actualy deleting it
+        self.conn.drop_database('test_db')
+        attrs = self.fuse.getattr('/test_db')
+        self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
 
 class RepresentCollectionsAsSubfoldersTest(FuseTest):
