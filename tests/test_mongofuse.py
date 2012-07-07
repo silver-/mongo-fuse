@@ -3,6 +3,7 @@ import unittest
 import stat
 import textwrap
 import datetime
+import time
 
 # Third-party modules:
 import pymongo
@@ -418,6 +419,33 @@ class DumpsTest(unittest.TestCase):
                 }""")
         self.assertMultiLineEqual(mongofuse.dumps(doc), expected)
 
+
+class LRUCacheTest(unittest.TestCase):
+
+    def test_should_behave_like_ordinary_dict(self):
+
+        # Given LRU cache with a large expiration time (so we won't reach it)
+        cache = mongofuse.LRUCache(expire_secs=100)
+
+        # Then it should behave like ordinary dict:
+        cache['answer'] = 42
+        self.assertIn('answer', cache)
+        self.assertEqual(cache['answer'], 42)
+        self.assertEqual(cache.get('dunno', '?'), '?')
+        with self.assertRaises(KeyError):
+            cache['boom!']
+
+    def test_should_remove_expired_items(self):
+
+        # Given filled cache
+        cache = mongofuse.LRUCache(expire_secs=1)
+        cache['answer'] = 42
+
+        # When expiration time has been passed
+        time.sleep(1.5)
+
+        # Then outdated items should be removed from cache
+        self.assertNotIn('answer', cache)
 
 
 

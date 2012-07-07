@@ -7,15 +7,16 @@ import errno
 import argparse
 import json
 import collections
+import time
 
 # Third-party modules:
 import pymongo
 import bson
 import bson.json_util
-from fuse import FUSE, Operations, FuseOSError
+from fuse import FUSE, Operations, FuseOSError, LoggingMixIn
 
 
-class MongoFuse(Operations):
+class MongoFuse(LoggingMixIn, Operations):
     """File system interface for MongoDB.
 
     ``conn_string``
@@ -222,7 +223,7 @@ class MongoFuse(Operations):
     def _list_documents(self, path):
         """Returns list of MongoDB documents represented as files.
         """
-        
+
         components = split_path(path)
         db = components[1]
         coll = components[2]
@@ -301,6 +302,41 @@ class MongoFuse(Operations):
         else:
             return True
 
+
+class LRUCache(dict):
+    """Simple Least Recently Used (LRU) cache.
+
+    Removes contained items after `expire_secs` seconds.
+
+    """
+
+    def __init__(self, expire_secs=2):
+        self.expire_secs = expire_secs
+        self._time_added = {}
+
+    def __setitem__(self, key, value):
+        self._delete_expired()
+        self._time_added[key] = time.time()
+        dict.__setitem__(self, key, value)
+
+    def __getitem__(self, key):
+        self._delete_expired()
+        return dict.__getitem__(self, key)
+
+    def __contains__(self, key):
+        self._delete_expired()
+        return dict.__contains__(self, key)
+
+    def __len__(self):
+        self._delete_expired()
+        return dict.__len__(self)
+    
+    def _delete_expired(self):
+        now = time.time()
+        for key, added in self._time_added.items():
+            if now - added > self.expire_secs:
+                del self[key]
+                del self._time_added[key]
 
 
 def split_path(path):
