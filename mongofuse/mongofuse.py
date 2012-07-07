@@ -25,7 +25,7 @@ class MongoFuse(LoggingMixIn, Operations):
     """
 
     def __init__(self, conn_string):
-        self.conn = pymongo.Connection(conn_string)
+        self.conn = pymongo.Connection(conn_string, safe=True)
         self._queries = {}                            # path => query_content
         self._created = set()
         self._dirs = collections.defaultdict(set)     # path => {subdirs}
