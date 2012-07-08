@@ -419,6 +419,18 @@ class CreateCustomCollectionViews(FuseTest):
         attrs = self.fuse.getattr("/test_db/test_coll")
         self.assertTrue(stat.S_ISDIR(attrs['st_mode']))
 
+    def test_should_generate_query_file_from_special_folder_names(self):
+
+        # Given MongoDB database and collection
+        self.conn.test_db.create_collection('test_coll')
+
+        # When creating subfolder with a special name "by_field"
+        self.fuse.mkdir("/test_db/test_coll/by_testId", 0777)
+
+        # Then query.json should be generated in this folder
+        query = self.fuse.read("/test_db/test_coll/by_testId/query.json", 100)
+        self.assertEqual(query, '{"testId": $1}')
+
 
 class SplitPathTest(unittest.TestCase):
 

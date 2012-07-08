@@ -226,6 +226,12 @@ class MongoFuse(LoggingMixIn, Operations):
             coll = components[2]
             self.conn[db].create_collection(coll)
 
+        elif len(components) > 3 and dirname.startswith("by_"):
+            field = dirname.split("by_")[1]
+            query = '{"%s": $1}' % field
+            self._queries[path] = query
+
+
         self._dirs[dirs].add(dirname)
 
     def chmod(self, path, mode):
