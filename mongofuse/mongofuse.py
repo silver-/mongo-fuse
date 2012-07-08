@@ -247,6 +247,10 @@ class MongoFuse(LoggingMixIn, Operations):
         coll = components[2]
         query = self._get_query(path)
 
+        # Don't show any docs for malformed queries
+        if query is None:
+            return []
+
         # Database names cannot contain the character '.'
         if "." in db:
             return []
@@ -329,6 +333,8 @@ class MongoFuse(LoggingMixIn, Operations):
 
     def _get_query(self, path):
         """Returns query defined for `path`, or `{}` if query not defined.
+        Returns `None` for malformed queries, or for queries with unprocessed
+        parameter placeholders.
         """
 
         components = split_path(path)
@@ -336,6 +342,7 @@ class MongoFuse(LoggingMixIn, Operations):
 
         if path not in self._queries:
             # Search parent's query.json and use subfolder name as query param
+            # TODO: way to escape substitutions
             parent_path = os.path.join(*components[:-1])
             query = self._queries.get(parent_path, "{}")
             query = query.replace("$1", dirname)
@@ -343,12 +350,15 @@ class MongoFuse(LoggingMixIn, Operations):
         else:
             query = self._queries.get(path, '{}')
 
-        try:
-            query = loads(query)
-        except ValueError:
-            query = {}
+            # Treat unresolved substituions as malformed query
+            if '$1' in query:
+                return None
 
-        return query
+        try:
+            return loads(query)
+
+        except ValueError:
+            return None
 
 
 class LRUCache(dict):
