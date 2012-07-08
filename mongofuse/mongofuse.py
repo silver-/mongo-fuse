@@ -245,7 +245,7 @@ class MongoFuse(LoggingMixIn, Operations):
         components = split_path(path)
         db = components[1]
         coll = components[2]
-        query = loads(self._queries.get(path, "{}"))
+        query = self._get_query(path)
 
         # Database names cannot contain the character '.'
         if "." in db:
@@ -326,6 +326,29 @@ class MongoFuse(LoggingMixIn, Operations):
 
         else:
             return True
+
+    def _get_query(self, path):
+        """Returns query defined for `path`, or `{}` if query not defined.
+        """
+
+        components = split_path(path)
+        dirname = components[-1]
+
+        if path not in self._queries:
+            # Search parent's query.json and use subfolder name as query param
+            parent_path = os.path.join(*components[:-1])
+            query = self._queries.get(parent_path, "{}")
+            query = query.replace("$1", dirname)
+
+        else:
+            query = self._queries.get(path, '{}')
+
+        try:
+            query = loads(query)
+        except ValueError:
+            query = {}
+
+        return query
 
 
 class LRUCache(dict):

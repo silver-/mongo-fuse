@@ -289,10 +289,7 @@ class FilterCollectionsWithSavedQueries(FuseTest):
         # When saving query.json file
         query = '{"foo": "bar"}'
         filename = "/test_db/test_coll/query.json"
-        self.fuse.write(filename,
-                        query,
-                        offset=0,
-                        fh=None)
+        self.fuse.write(filename, query)
 
         # Then it should be listed by readdir
         self.assertIn("query.json", self.fuse.readdir("/test_db/test_coll"))
@@ -303,6 +300,20 @@ class FilterCollectionsWithSavedQueries(FuseTest):
 
         # And length should be reported by getattr
         self.assertEqual(self.fuse.getattr(filename)['st_size'], len(query))
+
+    def test_should_treat_subfolder_name_as_placeholder_substitution(self):
+
+        # Given query.json file with a parameter placeholder
+        query = '{"foo": "$1"}'
+        filename = "/test_db/test_coll/query.json"
+        self.fuse.write(filename, query)
+
+        # When subfolder exists for this path
+        self.fuse.mkdir("/test_db/test_coll/bar", 0777)
+
+        # Then query's placeholder should be substituted for the folder name
+        query = self.fuse._get_query('/test_db/test_coll/bar')
+        self.assertEqual(query, {"foo": "bar"})
 
 
 class CreateDocumentTest(FuseTest):
