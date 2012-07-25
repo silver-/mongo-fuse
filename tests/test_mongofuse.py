@@ -22,6 +22,7 @@ class FuseTest(unittest.TestCase):
         self.fuse.attrs_cache = mongofuse.LRUCache(expire_secs=0)
 
         self.conn.drop_database('test_db')
+        self.addCleanup(self.conn.drop_database, 'test_db')
 
 
 class RepresentDatabasesAsFoldersTest(FuseTest):
@@ -205,18 +206,14 @@ class ShowFirstDocumentsAsJsonFilesTest(FuseTest):
         self.assertTrue(attrs['st_size'])
         self.assertTrue(stat.S_ISREG(attrs['st_mode']))
 
-    def test_read(self):
+    def test_read_whole_file(self):
 
         # Given MongoDB document
         coll = self.conn.test_db.test_collection
-        self.addCleanup(self.conn.drop_database, "test_db")
-        coll.drop()
-
-        oid_1 = coll.save({"name": "Aleksey", "age": 27})
-        oid_2 = coll.save({"name": "Svetlana", "age": 25})
+        oid = coll.save({"name": "Aleksey", "age": 27})
 
         # When reading a file representing the document
-        filename = '/test_db/test_collection/{}.json'.format(oid_1)
+        filename = '/test_db/test_collection/{}.json'.format(oid)
         content = self.fuse.read(filename, 1000, 0, fh=None)
 
         # Then pretty-printed JSON should be returned
@@ -227,7 +224,25 @@ class ShowFirstDocumentsAsJsonFilesTest(FuseTest):
                     }, 
                     "age": 27, 
                     "name": "Aleksey"
-                }""" % oid_1))
+                }""" % oid))
+
+    def test_read_random_block(self):
+
+        # Given MongoDB document
+        coll = self.conn.test_db.test_collection
+        oid = coll.save({"name": "Aleksey", "age": 27})
+
+        # When reading blocks of random size at arbitrary positions from the
+        # file representing the document
+        filename = '/test_db/test_collection/{}.json'.format(oid)
+        block_1 = self.fuse.read(filename, size=6, offset=5, fh=None)
+        block_2 = self.fuse.read(filename, size=1, offset=1, fh=None)
+        block_3 = self.fuse.read(filename, size=1000, offset=1000, fh=None)
+
+        # Then corresponding parts of content should be returned
+        self.assertEqual(block_1, ' "_id"')
+        self.assertEqual(block_2, "\n")
+        self.assertEqual(block_3, "")
 
     def test_raise_error_on_unexisting_files(self):
 

@@ -149,14 +149,15 @@ class MongoFuse(LoggingMixIn, Operations):
         dirs, fname = os.path.split(path)
 
         if fname == "query.json" and dirs in self._queries:
-            return self._queries[dirs]
+            content = self._queries[dirs]
 
-        if len(components) >= 4:
+        elif len(components) >= 4:
             doc = self._find_doc(path)
             if doc is None:
                 raise FuseOSError(errno.ENOENT)
-            else:
-                return dumps(doc)
+            content = dumps(doc)
+
+        return content[offset:offset+size]
 
     def create(self, path, mode):
 
@@ -343,12 +344,14 @@ class MongoFuse(LoggingMixIn, Operations):
         parameter placeholders.
         """
 
+
         components = split_path(path)
         dirname = components[-1]
 
         if path not in self._queries:
             # Search parent's query.json and use subfolder name as query param
             # TODO: way to escape substitutions
+            # TODO: detect int/string substitutions
             parent_path = os.path.join(*components[:-1])
             query = self._queries.get(parent_path, "{}")
             query = query.replace("$1", dirname)
